@@ -1,4 +1,4 @@
-#exchangedata
+#ExchangeData
 
 exchangedata is a ticker receiver for a exchanger.
 
