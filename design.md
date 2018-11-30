@@ -2,7 +2,12 @@
 
 ##main:
 1. get configuration
-2. open web client to the server
+example configuration file:
+ex-okex.json
+<exchanger=okex>
+    <server=>
+</exchanger>
+2. open websocket client to the server
     2.1 exURL
     2.2 userSeceret
 3. subscribe to the ticker
@@ -14,6 +19,17 @@
         correct form
         correct time
         3.2.3 store
+        db tables:
+        1 insert this receiver into the index table if not already exist.
+        keys include: exchanger name/id(a exchanger table?), ticker pairs
+        data: working table id
+        2 create the working table for this receiver if the working table is not alread exist.
+        keys include: 
 
 ##APIs
 1. query support (APIs)
+
+##Related link
+###OKex
+API Documents: https://www.okex.com/docs/en/
+SDK: https://github.com/okcoin-okex/open-api-v3-sdk
