@@ -1,33 +1,82 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"net/url"
+	"os"
+	"os/signal"
+	"time"
 
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
+	"golang.org/x/net/proxy"
 )
 
 const (
-	serverURI    = "wss://real.okex.com:10441/websocket"
-	serverOrigin = "http://real.okex.com/"
-	pingEvent    = "{'event':'ping'}"
-	pongEvent    = "{'event':'pong'}"
+	addr      = "real.okex.com:10441"
+	pingEvent = "{'event':'ping'}"
+	pongEvent = "{'event':'pong'}"
 )
 
 func main() {
-	ws, err := websocket.Dial(serverURI, "", serverOrigin)
-	if err != nil {
-		log.Println("Open websocket error", err)
-	}
-	defer ws.Close()
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
 
-	if _, err := ws.Write([]byte(pingEvent)); err != nil {
-		log.Fatal(err)
+	u := url.URL{Scheme: "ws", Host: addr, Path: "/websocket"}
+	log.Printf("connecting to %s", u.String())
+
+	netDialer, err := proxy.SOCKS5("tcp", "localhost:1080", nil, proxy.Direct)
+	if err != nil {
+		log.Fatalf("sock5 configuration error %v", err)
 	}
-	var msg = make([]byte, 512)
-	var n int
-	if n, err = ws.Read(msg); err != nil {
-		log.Fatal(err)
+	dialer := websocket.Dialer{NetDial: netDialer.Dial}
+	c, _, err := dialer.Dial(u.String(), nil)
+	if err != nil {
+		log.Fatalf("dial:%s error:%v", u.String(), err)
 	}
-	fmt.Printf("Received: %s.\n", msg[:n])
+	defer c.Close()
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for {
+			_, message, err := c.ReadMessage()
+			if err != nil {
+				log.Println("read:", err)
+				return
+			}
+			log.Printf("recv: %s", message)
+		}
+	}()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			err := c.WriteMessage(websocket.TextMessage, []byte(pingEvent))
+			if err != nil {
+				log.Println("write:", err)
+				return
+			}
+		case <-interrupt:
+			log.Println("interrupt")
+
+			// Cleanly close the connection by sending a close message and then
+			// waiting (with timeout) for the server to close the connection.
+			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err != nil {
+				log.Println("write close:", err)
+				return
+			}
+			select {
+			case <-done:
+			case <-time.After(time.Second):
+			}
+			return
+		}
+	}
 }
