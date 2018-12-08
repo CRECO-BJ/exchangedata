@@ -1,107 +1,67 @@
 package main
 
 import (
+	"sync"
+	"net/url"
+	"os"
+	"os/signal"
 	"log"
 
 	"github.com/gorilla/websocket"
+	"github.com/exchangedata/exchanger"
 )
 
 const (
-	serverURI    = "wss://real.okex.com:10441/websocket"
-	serverOrigin = "http://real.okex.com:10441/"
 )
 
 var (
-)
-
-func ExchangerComm() {
-	for ex := range exchangers {
-		if ex.useWss() {
-			ex.Dial()
-		} else !ex.useWeb() {
-			return
-		} 
-		go ex.ReceiveFunc()
-		go ex.HandleFunc()
+	exVar = []exchanger.Exchanger{
+		{ Name:"OKEX", 
+		WssURL:url.URL{Scheme:"wss",Path:"real.okex.com:10441/websocket"}, 
+		WebAPIURL:url.URL{Scheme:"https",Path:"www.okex.com/docs/en/"}, 
+		Symbols:[]exchanger.Symbol{{Base:"btc",Quote:"usdt"},{Base:"eth",Quote:"usdt"},{Base:"eth",Quote:"btc"}}},
+		{ Name:"Poloniex", 
+		WssURL:url.URL{Scheme:"wss", Path:"api2.poloniex.com"}, 
+		WebAPIURL:url.URL{Scheme:"https",Path:"poloniex.com"},
+		Symbols:[]exchanger.Symbol{{Base:"btc",Quote:"usdt"},{Base:"eth",Quote:"usdt"},{Base:"eth",Quote:"btc"}}},
 	}
-}
+)
 
 func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	u := addr["okex"]
-	log.Printf("connecting to %s", u.String())
-
-	var dialer *websocket.Dialer
-	if viaProxy {
-		//	auth = proxy.Auth(User:, Password:kb109kb109)
-		netDialer, err := proxy.SOCKS5("udp", "localhost:1080", nil, proxy.Direct)
-		if err != nil {
-			log.Fatalf("sock5 configuration error %v", err)
+	wg := &sync.WaitGroup{}
+	for k := range exVar {
+		if exVar[k].UseWss() {
+			exVar[k].Dial()
+		} else if !exVar[k].UseWeb() {
+			continue
 		}
-		dialer = &websocket.Dialer{NetDial: netDialer.Dial}
-	} else {
-		dialer = websocket.DefaultDialer
-	}
-	c, _, err := dialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatalf("dial:%s error:%v", u.String(), err)
-	}
-	defer c.Close()
-
-	done := make(chan struct{})
-
-	go func() {
-		defer close(done)
-		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				return
-			}
-			var b []byte
-			log.Printf("recv: %s", string(message))
-			for i, x := range message {
-				if i%16 == 0 {
-					b = append(b, '\n')
-				}
-				b = strconv.AppendInt(b, int64(x), 16)
-				b = append(b, ' ')
-			}
-			log.Printf("recv(hex): %s", string(b))
+		exVar[k].Done = make(chan struct{})
+		exVar[k].CloseDone = make(chan struct{})
+		wg.Add(1)
+		go exVar[k].Run(wg)
+		go func () {	// routinue to clean close the connections
+			wg.Wait()
+			exVar[k].Close()
 		}
-	}()
-
-	ticker := time.NewTicker(3 * time.Second)
-	defer ticker.Stop()
+	}
 
 	for {
 		select {
-		case <-done:
-			return
-		case <-ticker.C:
-			err := c.WriteMessage(websocket.TextMessage, []byte(pingEvent))
-			if err != nil {
-				log.Println("write:", err)
-				return
-			}
-			log.Println("write:", pingEvent)
 		case <-interrupt:
 			log.Println("interrupt")
 
-			// Cleanly close the connection by sending a close message and then
-			// waiting (with timeout) for the server to close the connection.
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Println("write close:", err)
-				return
+			for _, ex := range exVar {
+				err := ex.CloseDone()
+				if err != nil {
+					log.Println("write close:", err)
+					return
+				}
 			}
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
+			wg.Wait()
 			return
 		}
-	}
+	}	
 }
