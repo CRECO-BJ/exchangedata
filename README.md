@@ -1,8 +1,10 @@
-#ExchangeData
+ExchangeData
+=============
 
 exchangedata is a ticker receiver for a exchanger.
 
-##prerequisite
+prerequisite
+-------------
 The exchanger provides WEB accessing API.
 The backend mysql db has been preconfigured.
 

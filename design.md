@@ -25,6 +25,17 @@ ex-okex.json
         data: working table id
         2 create the working table for this receiver if the working table is not alread exist.
         keys include: 
+        3.2.4 tables
+        A: Trading
+        1) Exchangers
+        2) Traded Pairs
+        3) Trade Book (market depth)
+        4) Ticker
+        6) Transactions (trades)
+        #it Transactions are the fundemental. Should the database stores only the transactions and computes the trade book/ticker on demand? currently prepared in the table
+
+        B: Account
+        1) user  
 
 ##APIs
 1. query support (APIs)

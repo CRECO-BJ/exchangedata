@@ -2,34 +2,28 @@ package main
 
 import (
 	"log"
-	"net/url"
-	"os"
-	"os/signal"
-	"strconv"
-	"time"
 
 	"github.com/gorilla/websocket"
-	"golang.org/x/net/proxy"
 )
 
 const (
-	pingEvent = `{'event':'addChannel','channel':'ok_sub_spot_bch_btc_ticker' }` //{"event":"ping"}`
-	pongEvent = "{'event':'pong'}"
-	viaProxy  = false
+	serverURI    = "wss://real.okex.com:10441/websocket"
+	serverOrigin = "http://real.okex.com:10441/"
 )
 
-type exAddr map[string]url.URL
+var (
+)
 
-func (e exAddr) Add(s string, u url.URL) {
-	e[s] = u
-}
-
-var addr exAddr
-
-func init() {
-	addr = make(exAddr)
-	addr.Add("binace", url.URL{Scheme: "wss", Host: "stream.binance.com:9443", Path: "/ws"})
-	addr.Add("okex", url.URL{Scheme: "wss", Host: "real.okex.com:10441", Path: "/websocket"})
+func ExchangerComm() {
+	for ex := range exchangers {
+		if ex.useWss() {
+			ex.Dial()
+		} else !ex.useWeb() {
+			return
+		} 
+		go ex.ReceiveFunc()
+		go ex.HandleFunc()
+	}
 }
 
 func main() {
