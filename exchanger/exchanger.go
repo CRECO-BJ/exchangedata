@@ -145,12 +145,12 @@ start:
 			}
 			goto start
 		case <-ticker.C: // timely keepAlive processing
-			err := e.conn.WriteMessage(websocket.TextMessage, []byte("test"))
-			if err != nil {
-				log.Println(e.Name, "write:", err)
-				return
-			}
-			log.Println(e.Name, "write:", "test")
+			//			err := e.conn.WriteMessage(websocket.TextMessage, []byte("test"))
+			//			if err != nil {
+			//				log.Println(e.Name, "write:", err)
+			//				return
+			//			}
+			log.Println(e.Name, "time to write:", "test")
 		case <-e.closeDone:
 			log.Println("Close connection and to exit")
 			exit = true

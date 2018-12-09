@@ -26,7 +26,7 @@ var (
 )
 
 func main() {
-	interrupt := make(chan os.Signal, 1)
+	interrupt := make(chan os.Signal)
 	signal.Notify(interrupt, os.Interrupt)
 
 	wg := &sync.WaitGroup{}
@@ -39,6 +39,7 @@ func main() {
 		}(&exVar[k])
 	}
 
+	log.Println("to receive interrupt")
 	<-interrupt // exit only when the application is interrupted
 	log.Println("interrupt")
 	for _, ex := range exVar {
