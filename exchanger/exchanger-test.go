@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// TestExchangerUseWss ...
 func TestExchangerUseWss(t *testing.T) {
 
 }

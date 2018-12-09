@@ -35,10 +35,10 @@ type Exchanger struct {
 	Symbols       []Symbol
 	Proxy         url.URL
 
-	Conn *websocket.Conn
-	Done chan struct{} // Closed when the receive rountine received error, then the main exchanger communication routine exit
+	conn *websocket.Conn
+	done chan struct{} // Closed when the receive rountine received error, then the main exchanger communication routine exit
 	// If CloseDone is not closed, the connection should be reconnected...ToDo
-	CloseDone chan struct{} // Signal to close connection and exit. Program exiting...
+	closeDone chan struct{} // Signal to close connection and exit. Program exiting...
 }
 
 // UseWss ...
@@ -76,30 +76,56 @@ func (e *Exchanger) Dial() *websocket.Conn {
 	if err != nil {
 		log.Fatalf("dial:%s error:%v", e.WssURL.String(), err)
 	}
-	e.Conn = c
-	return e.Conn
+	e.conn = c
+	return e.conn
 }
 
 // Close ...
 func (e *Exchanger) Close() {
-	e.Conn.Close()
+	e.conn.Close()
+}
+
+// CloseDone ...
+func (e *Exchanger) CloseDone() {
+	e.closeDone <- struct{}{}
+}
+
+// Done ...
+func (e *Exchanger) Done() {
+	e.done <- struct{}{}
 }
 
 // Run ...
 func (e *Exchanger) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
-	defer close(e.CloseDone)
+
+	e.done = make(chan struct{})
+	e.closeDone = make(chan struct{})
+	defer close(e.closeDone)
+	defer close(e.done)
+
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+	exit := false
+
+start:
+	if e.UseWss() {
+		e.Dial()
+	} else if !e.UseWeb() { // no communication url is defined, bypass
+		log.Println("no valid communication method", e)
+		return
+	}
 
 	go func() {
-		defer close(e.Done)
+		defer e.Done()
 		for {
-			_, message, err := e.Conn.ReadMessage()
+			_, message, err := e.conn.ReadMessage()
 			if err != nil { // if read error, rountine exit, redail
-				log.Println("read:", err)
+				log.Println(e.Name, "%s read:", err)
 				return
 			}
 			var b []byte
-			log.Printf("recv: %s", string(message))
+			log.Printf("%s recv: %s", e.Name, string(message))
 			for i, x := range message {
 				if i%16 == 0 {
 					b = append(b, '\n')
@@ -107,36 +133,36 @@ func (e *Exchanger) Run(wg *sync.WaitGroup) {
 				b = strconv.AppendInt(b, int64(x), 16)
 				b = append(b, ' ')
 			}
-			log.Printf("recv(hex): %s", string(b))
+			log.Printf("%s recv(hex): %s", e.Name, string(b))
 		}
 	}()
 
-	ticker := time.NewTicker(3 * time.Second)
-	defer ticker.Stop()
-
 	for {
 		select {
-		case <-e.Done:
-			return
-		case <-ticker.C:
-			err := e.Conn.WriteMessage(websocket.TextMessage, []byte("test"))
-			if err != nil {
-				log.Println("write:", err)
+		case <-e.done:
+			if exit == true {
 				return
 			}
-			log.Println("write:", "test")
-		case <-e.CloseDone:
+			goto start
+		case <-ticker.C: // timely keepAlive processing
+			err := e.conn.WriteMessage(websocket.TextMessage, []byte("test"))
+			if err != nil {
+				log.Println(e.Name, "write:", err)
+				return
+			}
+			log.Println(e.Name, "write:", "test")
+		case <-e.closeDone:
 			log.Println("Close connection and to exit")
-
+			exit = true
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
-			err := e.Conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			err := e.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
 				log.Println("write close:", err)
 				return
 			}
 			select {
-			case <-e.Done:
+			case <-e.done:
 			case <-time.After(time.Second):
 			}
 			return
