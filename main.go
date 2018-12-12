@@ -12,13 +12,13 @@ import (
 
 const ()
 
-var (
+var ( // all lowercase string
 	exVar = []exchanger.Exchanger{
-		{Name: "OKEX",
+		{Name: "okex",
 			WssURL:    url.URL{Scheme: "wss", Path: "real.okex.com:10441/websocket"},
 			WebAPIURL: url.URL{Scheme: "https", Path: "www.okex.com/docs/en/"},
 			Symbols:   []exchanger.Symbol{{Base: "btc", Quote: "usdt"}, {Base: "eth", Quote: "usdt"}, {Base: "eth", Quote: "btc"}}},
-		{Name: "Poloniex",
+		{Name: "poloniex",
 			WssURL:    url.URL{Scheme: "wss", Path: "api2.poloniex.com"},
 			WebAPIURL: url.URL{Scheme: "https", Path: "poloniex.com"},
 			Symbols:   []exchanger.Symbol{{Base: "btc", Quote: "usdt"}, {Base: "eth", Quote: "usdt"}, {Base: "eth", Quote: "btc"}}},
@@ -26,24 +26,25 @@ var (
 )
 
 func main() {
-	interrupt := make(chan os.Signal)
+	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 	wg := &sync.WaitGroup{}
 	for k := range exVar {
+		ex, err := NewExchanger(exVar[k])
+		if err != nil {
+			log.Fatalf("cannot initialize exchanger, configuration error, %s", exVar[k].Name)
+		}
+		ex.Setup(exVar[k])
 		wg.Add(1)
-		go exVar[k].Run(wg)
-		go func(e *exchanger.Exchanger) { // routinue to clean close the connections
-			wg.Wait()
-			e.Close()
-		}(&exVar[k])
+		if ex.Start(wg) != nil {
+			log.Fatalf("cannot start exchanger, %s", exVar[k].Name)
+		}
 	}
 
-	log.Println("to receive interrupt")
 	<-interrupt // exit only when the application is interrupted
-	log.Println("interrupt")
 	for _, ex := range exVar {
-		ex.CloseDone()
+		ex.Stop()
 	}
 	wg.Wait()
 	return

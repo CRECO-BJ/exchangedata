@@ -43,16 +43,19 @@ ex-okex.json
 
 # Related link #
 
-## OKex ##
+## OKex ## blocked
 API Documents: https://www.okex.com/docs/en/
 SDK: https://github.com/okcoin-okex/open-api-v3-sdk
 
-## Binance ##
+## Binance ## blocked
 API Documents: https://github.com/binance-exchange/binance-official-api-docs
 *By testing with curl and ping, the server api.binance.com has been blocked
 
-## Huobi ##
+## Huobi ## blocked
 API Documents: https://github.com/huobiapi/API_Docs
 
 ## Poloniex ##
 API Documents: https://poloniex.com/support/api/
+
+## Bittrex ##
+API Guide: https://bittrex.zendesk.com/hc/en-us/articles/115003723911-Developer-s-Guide-API
