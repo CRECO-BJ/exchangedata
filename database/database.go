@@ -9,34 +9,38 @@ import (
 
 // DataStore ...
 type DataStore struct {
+	Dialect  string
+	Name     string
+	User     string
+	Password string
+
 	db *gorm.DB
 }
 
-func (d *DataStore) Open() error {
-	db, err := gorm.Open("mysql", "root:office98@/exdata")
+func NewDataStore(Dialet string) *DataStore {
+	return &DataStore{Dialect: Dialet,
+		Name:     "exdata",
+		User:     "root",
+		Password: "office98"} //@TODO later should change to from the config
+}
+
+func (d *DataStore) OpenDB() error {
+	//	user+":"+passwd+"@tcp(127.0.0.1:3306)/"+name+"?charset=utf8&parseTime=True&loc=Local"
+	uri := d.User + ":" + d.Password + "@/" + d.Name + "?charset=utf8&parseTime=True&loc=Local"
+	db, err := gorm.Open(d.Dialect, uri)
 	if err != nil {
 		log.Println("DB open with", err)
 		return err
 	}
 	d.db = db
 
-	return err
+	return nil
 }
 
-func (d *DataStore) Close() error {
+func (d *DataStore) CloseDB() error {
 	return d.db.Close()
 }
 
-// StoreTrade stores a trader to the database
-func (d *DataStore) StoreTrade(t *Trade) *gorm.DB {
-	return d.db.Create(t)
-}
-
-// CreateDB creates the database if it is not exist
-func CreateDB() {
-}
-
-type currencies struct {
-	Name       string
-	Currencies []string
+func (d *DataStore) GetDB() *gorm.DB {
+	return d.db
 }

@@ -14,5 +14,5 @@ var td = []testData{
 }
 
 func TestSymbolPars(t *testing.T) {
-
+	_ = td
 }

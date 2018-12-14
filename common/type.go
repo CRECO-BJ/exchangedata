@@ -7,58 +7,71 @@ import (
 )
 
 type Currency struct {
-	Name       string       `gorm:"primary_key,not null"`
+	ID         string       `gorm:"primary_key;size:32"`
+	Name       string       `gorm:"unique;size:64"`
 	Abbr       string       `gorm:"size:16"`
 	Exchangers []*Exchanger `gorm:"many2many:currency_exchangers;"`
 }
 
 type Exchanger struct {
-	Name        string           `gorm:"primary_key,not null"`
-	Currencies  []*Currency      `gorm:"many2many:currency_exchangers;"`
-	Markets     []*Market        `gorm:"foreignkey:ExRef"`
-	CommService CommunicationAPI `gorm:"foreignkey:ExRef"`
+	ID          string            `gorm:"primary_key;size:32"`
+	Name        string            `gorm:"unique;not null"`
+	Currencies  []*Currency       `gorm:"many2many:currency_exchangers;"`
+	Markets     []*Market         `gorm:"foreignkey:ExRef"`
+	CommService *CommunicationAPI `gorm:"foreignkey:ExRef"`
 }
 
 type Market struct {
-	Name        string `gorm:"primary_key, not null"`
-	Symbol      Symbol `gorm:"foreignkye:SymbolID"`
-	SymbolID    int
-	Exchanger   *Exchanger `gorm:"foreignkey:ExchangerID"`
-	ExchangerID int
-	Active      bool
-	info        string
-	precision   [3]int
-	limits      [3]Limitation
+	ID         string `gorm:"primary_key;size:32"`
+	Name       string `gorm:"not null"`
+	Symbol     Symbol `gorm:"foreignkey:SymRef"`
+	SymRef     int    `gorm:"unique_index:idx_sym_ex"`
+	Active     bool
+	Info       string
+	Precision  int        `gorm:"default:8"`
+	Limitation Limitation `gorm:"embedded;embedded_prefix:amount_"`
+	MinStep    float64
+	ExRef      int `gorm:"unique_index:idx_sym_ex"`
+}
+
+type Limitation struct {
+	Min, Max int
 }
 
 type CommunicationAPI struct {
-	Version    string
-	WebURL     string
-	WssURL     string
-	Enable     bool
-	ExRef      int
-	KeySecrect AccessSecret `gorm:"foreignkey:ComAPIRef"`
+	ID           string `gorm:"primary_key;size:32"`
+	Version      string `gorm:"size:32"`
+	WebURL       string
+	WssURL       string
+	Enable       bool
+	ExRef        int
+	Timeout      int
+	RateLimit    int
+	AccessSecret AccessSecret `gorm:"embedded;embedded_prefix:comm_"`
 }
 
 type AccessSecret struct {
+	ID        string `gorm:"primary_key;size:32"`
 	ComAPIRef int
-	APIKey    string
-	Secret    string
+	APIKey    string `gorm:"-"`
+	Secret    string `gorm:"-"`
+	FilePath  string
+	Salt      int
 }
 
 type Symbol struct {
-	ID      int
-	Base    Currency `gorm:"foreignkey:BaseID, not null"`
+	ID      string   `gorm:"primary_key;size:32"`
+	Base    Currency `gorm:"foreignkey:BaseID;not null"`
 	BaseID  int
 	Quote   Currency `gorm:"foreignkey:QuoteID"`
 	QuoteID int
 }
 
 type Ticker struct {
-	symbol        string
+	ID            string `gorm:"primary_key;size:32"`
 	Info          string
-	Time          time.Time `gorm:"primary_key"`
-	MarketRef     int       `gorm:"primary_key"`
+	Time          time.Time `gorm:"unique_index:idx_time_market;not null"`
+	MarketRef     int       `gorm:"unique_index:idx_time_market"`
 	High          float64
 	Low           float64
 	Bid           float64
@@ -78,10 +91,10 @@ type Ticker struct {
 }
 
 type Trade struct {
-	symbol    string
-	Time      time.Time
-	MarketRef int   `gorm:"primary_key"`
-	orderID   int64 `gorm:"primary_key"`
+	ID        string    `gorm:"primary_key;size:32"`
+	Time      time.Time `gorm:"not null"`
+	MarketRef int       `gorm:"unique_index:idx_market_trade;not null"`
+	OrderID   string    `gorm:"unique_index:idx_market_trade;not null"`
 	Type      string
 	Side      string
 	Price     float64
@@ -91,19 +104,19 @@ type Trade struct {
 }
 
 type OrderBook struct {
-	symbol    string
-	Time      time.Time
-	MarketRef int `gorm:"primary_key"`
-	bids      []PriceVol
-	asks      []PriceVol
-	time      time.Time
-	Market    *Market `gorm:"foreignkey:MarketRef"`
+	ID        string     `gorm:"primary_key;size:32"`
+	Time      time.Time  `gorm:"unique_index:idx_market_orderbook;not null"`
+	MarketRef int        `gorm:"unique_index:idx_market_orderbook"`
+	Bids      []PriceVol `gorm:"many2many:bid_pricevols;"`
+	Asks      []PriceVol `gorm:"many2many:ask_pricevols;"`
+	Market    *Market    `gorm:"foreignkey:MarketRef"`
 }
 
 type PriceVol struct {
-	price  float64
-	volume float64
-	occurs []*OrderBook
+	ID     string `gorm:"primary_key;size:32"`
+	Price  float64
+	Volume float64
+	Occurs []*OrderBook `gorm:"many2many:bid_pricevols;many2many:ask_pricevols;"`
 }
 
 func (s Symbol) ParseString(str string) (Symbol, error) {
@@ -111,19 +124,15 @@ func (s Symbol) ParseString(str string) (Symbol, error) {
 	if len(ss) != 2 {
 		return Symbol{}, fmt.Errorf("not a valid traded pair")
 	}
-	return Symbol{Base: ss[0], Quote: ss[1]}, nil
+	return Symbol{Base: Currency{Abbr: ss[0]}, Quote: Currency{Abbr: ss[1]}}, nil
 }
 
 func (s Symbol) String() string {
-	return s.Base + "_" + s.Quote
+	return s.Base.Abbr + "_" + s.Quote.Abbr
 }
 
 func (s Symbol) MarshallJSON() ([]byte, error) {
 	str := s.String()
 
 	return []byte(str), nil
-}
-
-type Limitation struct {
-	min, max int
 }
