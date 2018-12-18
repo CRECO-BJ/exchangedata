@@ -1,11 +1,10 @@
 package main
 
 import (
-	"database/sql"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
+/*
 func fake_main() {
 	name := "exdata"
 	passwd := "office98"
@@ -17,7 +16,7 @@ func fake_main() {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("CREATE DATABASE " + name)
+	_, err = db.Exec("Create Database If Not Exists " + name + "Character Set UTF8 ")
 	if err != nil {
 		panic(err)
 	}
@@ -46,4 +45,4 @@ func fake_main() {
 	if err != nil {
 		panic(err)
 	}
-}
+}*/
