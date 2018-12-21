@@ -6,6 +6,7 @@ import (
 	"github.com/exchangedata/exchanger"
 	"github.com/exchangedata/exchanger/okex"
 	"github.com/exchangedata/exchanger/poloniex"
+	"github.com/exchangedata/exchanger/bittrex"
 )
 
 var exchangerSupported []string
@@ -36,6 +37,7 @@ func NewExchanger(s string) ( *exchanger.ExControl, error) {
 	switch s {
 	case "okex": nex = okex.NewOKEX()
 	case "polonex": nex = poloniex.NewPoloniex()
+	case "bittrex": nex = bittrex.NewBittrex()
 	}
-	return
+	return nex, nil
 }

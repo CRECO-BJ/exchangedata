@@ -120,7 +120,7 @@ func (d *DataStore) UpdateTicker(c *common.Ticker) *gorm.DB {
 		d.db.First(c.Market, c.MarketRef)
 	}
 
-	return d.db.Where("time = ? and maket_ref = ?", c.Time, c.MarketRef).FirstOrCreate(c)
+	return d.db.Where("time = ? and market_ref = ?", c.Time, c.MarketRef).FirstOrCreate(c)
 }
 
 func (d *DataStore) UpdateTrade(c *common.Trade) *gorm.DB {
@@ -136,7 +136,7 @@ func (d *DataStore) UpdateTrade(c *common.Trade) *gorm.DB {
 		d.db.First(c.Market, c.MarketRef)
 	}
 
-	return d.db.Where("order_id = ? and maket_ref = ?", c.OrderID, c.MarketRef).FirstOrCreate(c)
+	return d.db.Where("order_id = ? and market_ref = ?", c.OrderID, c.MarketRef).FirstOrCreate(c)
 }
 
 func (d *DataStore) UpdateOrderBook(c *common.OrderBook) *gorm.DB {
@@ -164,7 +164,7 @@ func (d *DataStore) UpdateOrderBook(c *common.OrderBook) *gorm.DB {
 		}
 	}
 
-	return d.db.Where("time = ? and maket_ref = ?", c.Time, c.MarketRef).FirstOrCreate(c)
+	return d.db.Where("time = ? and market_ref = ?", c.Time, c.MarketRef).FirstOrCreate(c)
 }
 
 func (d *DataStore) UpdatePriceVol(c *common.PriceVol) *gorm.DB {

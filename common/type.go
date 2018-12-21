@@ -71,8 +71,7 @@ type Symbol struct {
 }
 
 type Ticker struct {
-	ID            uint `gorm:"primary_key"`
-	Info          string
+	ID            uint      `gorm:"primary_key"`
 	Time          time.Time `gorm:"unique_index:idx_time_market;not null"`
 	MarketRef     uint      `gorm:"unique_index:idx_time_market;not null"`
 	High          float64
@@ -122,20 +121,41 @@ type PriceVol struct {
 	Occurs []*OrderBook `gorm:"many2many:bid_pricevols;many2many:ask_pricevols"`
 }
 
-func (s Symbol) ParseString(str string) (Symbol, error) {
+func (s *Symbol) ParseString(str string) error {
 	ss := strings.Split(str, "_")
 	if len(ss) != 2 {
-		return Symbol{}, fmt.Errorf("not a valid traded pair")
+		return fmt.Errorf("not a valid traded pair")
 	}
-	return Symbol{Base: &Currency{Abbr: ss[0]}, Quote: &Currency{Abbr: ss[1]}}, nil
+
+	if s.Base == nil {
+		s.Base = &Currency{Abbr: ss[0]}
+	} else {
+		s.Base.Abbr = ss[0]
+	}
+
+	if s.Quote == nil {
+		s.Quote = &Currency{Abbr: ss[1]}
+	} else {
+		s.Quote.Abbr = ss[1]
+	}
+	return nil
 }
 
-func (s Symbol) String() string {
+func (s *Symbol) String() string {
 	return s.Base.Abbr + "_" + s.Quote.Abbr
 }
 
-func (s Symbol) MarshallJSON() ([]byte, error) {
+func (s *Symbol) MarshallJSON() ([]byte, error) {
 	str := s.String()
 
 	return []byte(str), nil
+}
+
+func (e Exchanger) GetCurrencyByName(name string) *Currency {
+	for _, c := range e.Currencies {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }

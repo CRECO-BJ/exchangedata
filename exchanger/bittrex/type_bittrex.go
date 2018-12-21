@@ -14,12 +14,12 @@ type jsonResponse struct {
 	Result  json.RawMessage `json:"result"`
 }
 
-type Address struct {
+type btAddress struct {
 	Currency string `json:"Currency"`
 	Address  string `json:"Address"`
 }
 
-type Balance struct {
+type btBalance struct {
 	Currency      string          `json:"Currency"`
 	Balance       decimal.Decimal `json:"Balance"`
 	Available     decimal.Decimal `json:"Available"`
@@ -29,7 +29,7 @@ type Balance struct {
 	Uuid          string          `json:"Uuid"`
 }
 
-type Candle struct {
+type btCandle struct {
 	TimeStamp  CandleTime      `json:"T"`
 	Open       decimal.Decimal `json:"O"`
 	Close      decimal.Decimal `json:"C"`
@@ -39,8 +39,8 @@ type Candle struct {
 	BaseVolume decimal.Decimal `json:"BV"`
 }
 
-type NewCandles struct {
-	Ticks []Candle `json:"ticks"`
+type btNewCandles struct {
+	Ticks []btCandle `json:"ticks"`
 }
 
 var CANDLE_INTERVALS = map[string]bool{
@@ -68,7 +68,7 @@ func (t *CandleTime) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type Currency struct {
+type btCurrency struct {
 	Currency        string          `json:"Currency"`
 	CurrencyLong    string          `json:"CurrencyLong"`
 	MinConfirmation int             `json:"MinConfirmation"`
@@ -79,7 +79,7 @@ type Currency struct {
 	Notice          string          `json:"Notice"`
 }
 
-type Deposit struct {
+type btDeposit struct {
 	Id            int64           `json:"Id"`
 	Amount        decimal.Decimal `json:"Amount"`
 	Currency      string          `json:"Currency"`
@@ -89,7 +89,7 @@ type Deposit struct {
 	CryptoAddress string          `json:"CryptoAddress"`
 }
 
-type Distribution struct {
+type btDistribution struct {
 	Distribution   []BalanceD      `json:"Distribution"`
 	Balances       decimal.Decimal `json:"Balances"`
 	AverageBalance decimal.Decimal `json:"AverageBalance"`
@@ -122,7 +122,7 @@ func (jt jTime) MarshalJSON() ([]byte, error) {
 	return json.Marshal((*time.Time)(&jt.Time).Format(TIME_FORMAT))
 }
 
-type Market struct {
+type btMarket struct {
 	MarketCurrency     string          `json:"MarketCurrency"`
 	BaseCurrency       string          `json:"BaseCurrency"`
 	MarketCurrencyLong string          `json:"MarketCurrencyLong"`
@@ -137,7 +137,7 @@ type Market struct {
 	Created            string          `json:"Created"`
 }
 
-type MarketSummary struct {
+type btMarketSummary struct {
 	MarketName     string          `json:"MarketName"`
 	High           decimal.Decimal `json:"High"`
 	Low            decimal.Decimal `json:"Low"`
@@ -152,7 +152,7 @@ type MarketSummary struct {
 	TimeStamp      string          `json:"TimeStamp"`
 }
 
-type Order struct {
+type btOrder struct {
 	OrderUuid         string          `json:"OrderUuid"`
 	Exchange          string          `json:"Exchange"`
 	TimeStamp         jTime           `json:"TimeStamp"`
@@ -166,7 +166,7 @@ type Order struct {
 }
 
 // For getorder
-type Order2 struct {
+type btOrder2 struct {
 	AccountId                  string
 	OrderUuid                  string `json:"OrderUuid"`
 	Exchange                   string `json:"Exchange"`
@@ -192,7 +192,7 @@ type Order2 struct {
 	ConditionTarget            decimal.Decimal
 }
 
-type OrderBook struct {
+type btOrderBook struct {
 	Buy  []Orderb `json:"buy"`
 	Sell []Orderb `json:"sell"`
 }
@@ -202,14 +202,14 @@ type Orderb struct {
 	Rate     decimal.Decimal `json:"Rate"`
 }
 
-type Ticker struct {
+type btTicker struct {
 	Bid  decimal.Decimal `json:"Bid"`
 	Ask  decimal.Decimal `json:"Ask"`
 	Last decimal.Decimal `json:"Last"`
 }
 
 // Used in getmarkethistory
-type Trade struct {
+type btTrade struct {
 	OrderUuid int64           `json:"Id"`
 	Timestamp jTime           `json:"TimeStamp"`
 	Quantity  decimal.Decimal `json:"Quantity"`
@@ -223,7 +223,7 @@ type Uuid struct {
 	Id string `json:"uuid"`
 }
 
-type Withdrawal struct {
+type btWithdrawal struct {
 	PaymentUuid    string          `json:"PaymentUuid"`
 	Currency       string          `json:"Currency"`
 	Amount         decimal.Decimal `json:"Amount"`
