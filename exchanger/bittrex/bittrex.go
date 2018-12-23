@@ -88,7 +88,7 @@ type Bittrex struct {
 
 func NewBittrex() *Bittrex {
 	b := &Bittrex{
-		ex: &common.Exchanger{Name: "Bittrex"},
+		ex: &common.Exchanger{Name: "bittrex"},
 	}
 	b.NewLogger()
 	b.done = make(chan struct{})
@@ -127,41 +127,59 @@ func (b *Bittrex) Setup() error {
 	b.ds.AutoMigrate()
 
 	if currencies, err := b.GetCurrencies(); err != nil {
-		b.Panic("error get currency ", err)
+		b.Logln("error get currency ", err)
+		return err
 	} else {
 		if b.ex.Currencies == nil {
-			b.ex.Currencies = make([]*common.Currency, 3)
+			b.ex.Currencies = []*common.Currency{}
 		}
 		for _, c := range currencies {
-			n := &common.Currency{Name: c.CurrencyLong, Abbr: c.Currency, Exchangers: []*common.Exchanger{b.ex}}
-			b.ex.Currencies = append(b.ex.Currencies, n)
+			n := &common.Currency{Name: c.CurrencyLong, Abbr: c.Currency} //Exchangers: []*common.Exchanger{b.ex}} // not sure why this panic. ToKnow
 			if b.ds.UpdateCurrency(n).Error != nil {
 				b.Logln("error update db, currency ", n, b.ds.GetDB().Error)
+				return b.ds.GetDB().Error
 			}
+			b.ex.Currencies = append(b.ex.Currencies, n)
 		}
 	}
 
 	if markets, err := b.GetMarkets(); err != nil {
-		b.Panic("error get market ", err)
+		b.Logln("error get market ", err)
+		return err
 	} else {
 		if b.ex.Markets == nil {
-			b.ex.Markets = make([]*common.Market, 10)
+			b.ex.Markets = []*common.Market{}
 		}
 		for _, c := range markets {
+			base := b.GetCurrencyByName(c.BaseCurrencyLong)
+			if base == nil {
+				b.Logf("Error! currency %s should be founded!", c.BaseCurrencyLong)
+				continue
+			}
+			quote := b.GetCurrencyByName(c.MarketCurrencyLong)
+			if quote == nil {
+				b.Logf("Error! currency %s should be founded!", c.MarketCurrencyLong)
+				continue
+			}
 			sym := &common.Symbol{
-				Base:  b.GetCurrencyByName(c.BaseCurrencyLong),
-				Quote: b.GetCurrencyByName(c.MarketCurrencyLong),
+				Base:  base,
+				Quote: quote,
 			}
 			m := &common.Market{
-				Name:      sym.String(),
-				Symbol:    sym,
-				Active:    true,
-				Exchanger: b.ex,
+				Name:   sym.String(),
+				Symbol: sym,
+				Active: c.IsActive,
 			}
 			if b.ds.UpdateMarket(m).Error != nil {
 				b.Logln("error update db, market ", c, b.ds.GetDB().Error)
+				return b.ds.GetDB().Error
 			}
 		}
+	}
+
+	if b.ds.UpdateExchanger(b.ex).Error != nil {
+		b.Logln("error update db, exchanger ", b.ex, b.ds.GetDB().Error)
+		return b.ds.GetDB().Error
 	}
 	return nil
 }
@@ -170,6 +188,7 @@ func (b *Bittrex) Setup() error {
 func (b *Bittrex) Start(wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	b.Logln("bittrex Started ...")
 	ticker := time.NewTicker(5 * time.Second) // default is to get ticker every 5 seconds
 	defer ticker.Stop()
 
@@ -197,8 +216,10 @@ func (b *Bittrex) Done() {
 }
 
 func (b *Bittrex) runDataFetcher() (err error) {
+	b.Logln("runDataFetcher ...")
 	for _, m := range b.ex.Markets {
 		name := m.Symbol.String()
+		b.Logln("Get ", name, " data ...")
 		// Get Ticker
 		ticker, err := b.GetTicker(name)
 		if err != nil {

@@ -30,10 +30,9 @@ type ExchangerConf struct {
 
 // ExWsControl ...
 type ExControl interface {
-	Start(wg *sync.WaitGroup) error
 	Setup() error
-	Stop() error
-	HandleData(...interface{}) error
+	Start(wg *sync.WaitGroup)
+	Stop()
 }
 
 func isValidProxy(url url.URL) bool {

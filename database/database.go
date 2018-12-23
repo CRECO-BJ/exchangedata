@@ -53,9 +53,6 @@ func (d *DataStore) AutoMigrate() *gorm.DB {
 }
 
 func (d *DataStore) UpdateCurrency(c *common.Currency) *gorm.DB {
-	if c.Name == "" {
-		return nil
-	}
 	t := &common.Currency{}
 	if !d.db.Where("name = ?", c.Name).First(t).RecordNotFound() {
 		if !t.AbbrFinal {
@@ -63,13 +60,11 @@ func (d *DataStore) UpdateCurrency(c *common.Currency) *gorm.DB {
 		}
 		c.ID = t.ID
 	}
-	return d.db.Save(c)
+
+	return d.db.Save(c) //Set("gorm:save_associations", false).
 }
 
 func (d *DataStore) UpdateExchanger(c *common.Exchanger) *gorm.DB {
-	if c.Name == "" {
-		return nil
-	}
 	return d.db.Where("name = ?", c.Name).FirstOrCreate(c)
 }
 

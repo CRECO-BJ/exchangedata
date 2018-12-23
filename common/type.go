@@ -2,9 +2,13 @@ package common
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 )
+
+// @Dev: all the Name should be lowercase, Abbr should be uppercase, the leading and tail space should be trimmed
+// @User: sometimes exchanger api has mismatching currency and market setting. Such mismatching can be addressed by predefined setting in configuration or database.
 
 type Currency struct {
 	ID         uint         `gorm:"primary_key"`
@@ -152,8 +156,17 @@ func (s *Symbol) MarshallJSON() ([]byte, error) {
 }
 
 func (e Exchanger) GetCurrencyByName(name string) *Currency {
+	if e.Currencies == nil {
+		panic("currencies used but not initialized")
+	}
+	dname := strings.ToLower(name)
 	for _, c := range e.Currencies {
-		if c.Name == name {
+		if c == nil {
+			log.Println("nil currency pointer in exchanger")
+			continue
+		}
+		cname := strings.ToLower(c.Name)
+		if strings.Compare(cname, dname) == 0 {
 			return c
 		}
 	}

@@ -2,26 +2,19 @@ package main
 
 import (
 	"log"
-	"net/url"
 	"os"
 	"os/signal"
 	"sync"
 
+	"github.com/exchangedata/common"
 	"github.com/exchangedata/exchanger"
 )
 
 const ()
 
 var ( // all lowercase string
-	exVar = []exchanger.Exchanger{
-		{Name: "okex",
-			WssURL:    url.URL{Scheme: "wss", Path: "real.okex.com:10441/websocket"},
-			WebAPIURL: url.URL{Scheme: "https", Path: "www.okex.com/docs/en/"},
-			Symbols:   []exchanger.Symbol{{Base: "btc", Quote: "usdt"}, {Base: "eth", Quote: "usdt"}, {Base: "eth", Quote: "btc"}}},
-		{Name: "poloniex",
-			WssURL:    url.URL{Scheme: "wss", Path: "api2.poloniex.com"},
-			WebAPIURL: url.URL{Scheme: "https", Path: "poloniex.com"},
-			Symbols:   []exchanger.Symbol{{Base: "btc", Quote: "usdt"}, {Base: "eth", Quote: "usdt"}, {Base: "eth", Quote: "btc"}}},
+	exVar = []common.Exchanger{
+		{Name: "bittrex"},
 	}
 )
 
@@ -29,21 +22,25 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
+	exs := []exchanger.ExControl{}
 	wg := &sync.WaitGroup{}
 	for k := range exVar {
-		ex, err := NewExchanger(exVar[k])
+		ex, err := NewExchanger(exVar[k].Name)
 		if err != nil {
 			log.Fatalf("cannot initialize exchanger, configuration error, %s", exVar[k].Name)
+		} else {
+			log.Println("Exchanger ", exVar[k].Name, "initialized")
 		}
-		ex.Setup(exVar[k])
+		exs = append(exs, ex)
+		ex.Setup()
 		wg.Add(1)
-		if ex.Start(wg) != nil {
-			log.Fatalf("cannot start exchanger, %s", exVar[k].Name)
-		}
+		go ex.Start(wg)
 	}
 
+	log.Println("All exchangers have been set, waiting for interrupt to terminate exchangedata...")
 	<-interrupt // exit only when the application is interrupted
-	for _, ex := range exVar {
+	log.Println("intterupted! Exiting...")
+	for _, ex := range exs {
 		ex.Stop()
 	}
 	wg.Wait()
